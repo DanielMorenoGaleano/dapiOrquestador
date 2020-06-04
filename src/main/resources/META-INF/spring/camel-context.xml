@@ -1,0 +1,560 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:cxf="http://camel.apache.org/schema/cxf" xmlns:ctx="http://www.springframework.org/schema/context" xmlns:jee="http://www.springframework.org/schema/jee" xmlns:osgix="http://www.springframework.org/schema/osgi-compendium" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:act="http://action.trm.services.generic.action.superfinanciera.nexura.sc.com.co/"
+	xmlns:camel="http://camel.apache.org/schema/spring" xmlns:http-conf="http://cxf.apache.org/transports/http/configuration" xmlns:http="http://cxf.apache.org/transports/http/configuration" xmlns:sec="http://cxf.apache.org/configuration/security" xmlns:tem="http://tempuri.org/"
+
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+        http://camel.apache.org/schema/cxf http://camel.apache.org/schema/cxf/camel-cxf.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee.xsd
+        http://www.springframework.org/schema/osgi-compendium http://www.springframework.org/schema/osgi-compendium/spring-osgi-compendium.xsd
+        	http://cxf.apache.org/configuration/security http://cxf.apache.org/schemas/configuration/security.xsd
+       http://cxf.apache.org/jaxws http://cxf.apache.org/schemas/jaxws.xsd
+       http://cxf.apache.org/transports/http/configuration http://cxf.apache.org/schemas/configuration/http-conf.xsd">
+	<import resource="properties-beans.xml" />
+
+	<!-- Enabled Spring Annotations -->
+	<ctx:annotation-config />
+	<ctx:component-scan base-package="com.avianca.pagos.*" />
+
+	<bean class="org.slf4j.LoggerFactory" factory-method="getLogger" id="loggerRef">
+		<constructor-arg index="0" value="dapiorquestador" />
+	</bean>
+	<!-- call static method -->
+	<bean id="test" class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+		<property name="targetClass" value="org.slf4j.MDC" />
+		<property name="targetMethod" value="put" />
+		<property name="arguments">
+			<list>
+				<value>dapiorquestador</value>
+				<value>dapiorquestador</value>
+			</list>
+		</property>
+	</bean>
+
+	<cxf:rsServer id="restServer" address="${rest.server.url.path}" serviceClass="com.avianca.pagos.rest.service.RestService" staticSubresourceResolution="true">
+		<cxf:providers>
+			<bean class="com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider" />
+		</cxf:providers>
+	</cxf:rsServer>
+
+	<bean class="com.avianca.pagos.rest.processor.Aggregator" id="aggregator" />
+	<bean class="com.avianca.pagos.rest.processor.Aggregator2" id="Aggregator2" />
+	<bean id="dapiOauth2" class="java.lang.IllegalArgumentException">
+		<constructor-arg index="0" value="The consume to dapiOAuth2 is not correct check dapiOAuth2's logs" />
+	</bean>
+	<bean id="dapiContact" class="java.lang.IllegalArgumentException">
+		<constructor-arg index="0" value="The consume to dapiContact is not correct check dapiContact's logs" />
+	</bean>
+	<bean id="dapiContactId" class="java.lang.IllegalArgumentException">
+		<constructor-arg index="0" value="The consume to dapiContact doesn't have contactID with EMAIL and NOTIIFiCATION" />
+	</bean>
+	<bean id="dapiUserNotifications" class="java.lang.IllegalArgumentException">
+		<constructor-arg index="0" value="The consume to dapiUserNotifications is not correct check dapiUserNotifications'slogs" />
+	</bean>
+	<bean id="dapipaymentrecords" class="java.lang.IllegalArgumentException">
+		<constructor-arg index="0" value="The consume to dapiPaymentRecords is not correct check dapiPaymentRecords'slogs" />
+	</bean>
+	<bean id="dapipaymentremarks" class="java.lang.IllegalArgumentException">
+		<constructor-arg index="0" value="The consume to dapiPaymentRemarks is not correct check dapiPaymentRemarks'slogs" />
+	</bean>
+	<camelContext id="ctx-dapiorquestador" messageHistory="true" trace="false" useMDCLogging="true" typeConverterStatisticsEnabled="true" xmlns="http://camel.apache.org/schema/spring" streamCache="true">
+		<propertyPlaceholder location="ref:props" id="propertiesRef" />
+		<endpoint id="rsServerEndpoint" uri="cxfrs://bean://restServer">
+			<property key="bindingStyle" value="SimpleConsumer" />
+			<property key="loggingFeatureEnabled" value="{{rest.server.loggingFeatureEnabled}}" />
+		</endpoint>
+		<endpoint id="sedaCorreoSoporteEndpoint" uri="seda:mailErrorNotification" />
+
+		<onException id="CustomExceptionHandling">
+			<description></description>
+			<exception>java.lang.Exception</exception>
+			<handled>
+				<constant>true</constant>
+			</handled>
+			<log id="logBodyRequest" message="Exception: ${exception.message}, StackTrace:  ${exception.stacktrace}" loggingLevel="ERROR" loggerRef="loggerRef" />
+			<setProperty propertyName="errorMessage">
+				<simple>Exception: ${exception.message}, StackTrace:  ${exception.stacktrace}}</simple>
+			</setProperty>
+			<to pattern="InOnly" uri="ref:sedaCorreoSoporteEndpoint" />
+			<log loggerRef="loggerRef" loggingLevel="ERROR" message="Response error: ${body}" />
+			<setHeader headerName="code">
+				<simple>400</simple>
+			</setHeader>
+			<setHeader headerName="error">
+				<simple>${exception.message}</simple>
+			</setHeader>
+			<setBody>
+				<simple>${exception.message}</simple>
+			</setBody>
+			<bean ref="responseHandler">
+				<description>Create Response Bean</description>
+			</bean>
+		</onException>
+
+		<onException id="CustomExceptionHandling">
+			<description></description>
+			<exception>java.lang.IllegalArgumentException</exception>
+			<handled>
+				<constant>true</constant>
+			</handled>
+			<log id="logBodyRequest" message="Exception: ${exception.message}, StackTrace:  ${exception.stacktrace}" loggingLevel="ERROR" loggerRef="loggerRef" />
+			<setProperty propertyName="errorMessage">
+				<simple>Exception: ${exception.message}, StackTrace:  ${exception.stacktrace}}</simple>
+			</setProperty>
+			<to pattern="InOnly" uri="ref:sedaCorreoSoporteEndpoint" />
+			<log loggerRef="loggerRef" loggingLevel="ERROR" message="Response error: ${body}" />
+			<setHeader headerName="code">
+				<simple>400</simple>
+			</setHeader>
+			<setHeader headerName="error">
+				<simple>${exception.message}</simple>
+			</setHeader>
+			<setBody>
+				<simple>${exception.message}</simple>
+			</setBody>
+			<bean ref="responseHandler">
+				<description>Create Response Bean</description>
+			</bean>
+		</onException>
+
+		<onException id="CustomExceptionHandling">
+			<description></description>
+			<exception>java.io.IOException</exception>
+			<exception>java.net.SocketException</exception>
+			<exception>java.net.UnknownHostException</exception>
+			<handled>
+				<constant>true</constant>
+			</handled>
+			<log id="logBodyRequest" message="Exception: ${exception.message}, StackTrace:  ${exception.stacktrace}" loggingLevel="ERROR" loggerRef="loggerRef" />
+			<setProperty propertyName="errorMessage">
+				<simple>Exception: ${exception.message}, StackTrace:  ${exception.stacktrace}</simple>
+			</setProperty>
+			<to pattern="InOnly" uri="ref:sedaCorreoSoporteEndpoint" />
+			<log loggerRef="loggerRef" loggingLevel="ERROR" message="Response error: ${body}" />
+			<setHeader headerName="code">
+				<simple>408</simple>
+			</setHeader>
+			<setHeader headerName="error">
+				<simple>${exception.message}</simple>
+			</setHeader>
+			<setBody>
+				<simple>${exception.message}</simple>
+			</setBody>
+			<bean ref="responseHandler">
+				<description>Create Response Bean</description>
+			</bean>
+		</onException>
+
+		<route id="restServerRoute" streamCache="true">
+			<from uri="ref:rsServerEndpoint" id="restFrom" />
+			<log id="logBodyRequest" message="Body: ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<log message="CamelHttpPath used: ${headers.CamelHttpPath}" loggingLevel="INFO" loggerRef="loggerRef" />	
+			<setHeader headerName="body">
+				<simple>${body}</simple>
+			</setHeader>
+			<to uri="bean-validator:myvalidator" />
+			<setBody>
+				<simple>${header.body}</simple>
+			</setBody>
+			<setProperty propertyName="orderId">
+				<simple>${body.getPnr()}</simple>
+			</setProperty>
+			<setProperty propertyName="lastName">
+				<simple>${body.getLastName()}</simple>
+			</setProperty>
+			<choice>
+				<when>
+					<simple>${headers.CamelHttpPath} == {{path.records}}</simple>
+						<setProperty propertyName="bodyRecords" >
+							<simple>${body.getBody()}</simple>
+						</setProperty>
+						<log message="Start Headers ${property.bodyRecords}" loggingLevel="INFO" loggerRef="loggerRef" />
+						<log message="Start consume dapioauth2 from records" loggingLevel="INFO" loggerRef="loggerRef" />
+						<to uri="direct:OAuth" />	
+						<log message="Start consume dapipaymentrecords" loggingLevel="INFO" loggerRef="loggerRef" />
+						<to uri="direct:Records" />
+				</when>
+				<when>
+					<simple>${headers.CamelHttpPath} == {{path.remarks}}</simple>
+						<setHeader headerName="freeText">
+							<simple>${body.getFreetext()}</simple>
+						</setHeader>
+						<log message="header free ${header.freeText}" loggingLevel="INFO" loggerRef="loggerRef" />
+						<log message="Start consume dapioauth2 from records" loggingLevel="INFO" loggerRef="loggerRef" />
+ 						<to uri="direct:OAuth" />
+						<log message="Start consume dapiPaymentRemarks" loggingLevel="INFO" loggerRef="loggerRef" />
+						<to uri="direct:Remarks" />
+				</when>
+				<otherwise>	
+					<log message="Start consume dapioauth2" loggingLevel="INFO" loggerRef="loggerRef" />
+					<to uri="direct:OAuth" />	
+					<log message="Start consume dapicontacts" loggingLevel="INFO" loggerRef="loggerRef" />
+					<to uri="direct:Contacts" />
+					<log message="Start consume dapiusernotifications" loggingLevel="INFO" loggerRef="loggerRef" />
+					<to uri="direct:Notification" />
+				</otherwise>
+			</choice>
+			<bean ref="responseHandler">
+				<description>Create Response Bean</description>
+			</bean>
+		</route>
+
+		<route id="consumeOAuth" streamCache="true">
+			<description>Consume OAuth to get Token</description>
+			<from uri="direct:OAuth" />
+			<removeHeader headerName="CamelHttpPath" />
+			<setHeader headerName="CamelHttpMethod">
+				<constant>POST</constant>
+			</setHeader>
+			<setHeader headerName="client_id">
+				<simple>{{client_id}}</simple>
+			</setHeader>
+			<setHeader headerName="client_secret">
+				<simple>{{client_secret}}</simple>
+			</setHeader>
+			<setHeader headerName="CamelHttpUri">
+				<simple>{{urlDapioauth2}}</simple>
+			</setHeader>
+			<setHeader headerName="Content-Type">
+				<simple>application/json</simple>
+			</setHeader>
+			<setHeader headerName="Accept">
+				<simple>application/json</simple>
+			</setHeader>
+			<setBody>
+				<simple></simple>
+			</setBody>
+			<log message="Start getting Token to ${header.CamelHttpUri}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<convertBodyTo id="_convertBodyTo1" type="java.lang.String" />
+			<to uri="https://dummyHttp?throwExceptionOnFailure=false" />
+			<log message="Response OAth2 get Token ${body}" loggingLevel="DEBUG" loggerRef="loggerRef" />
+
+			<choice>
+				<when>
+					<simple>${headers.CamelHttpResponseCode} == '200'</simple>
+					<setHeader headerName="code">
+						<constant>200</constant>
+					</setHeader>
+					<log message="ResponseCode OAuht2 ${headers.code}" loggingLevel="INFO" loggerRef="loggerRef" />
+					<log message="Getting Token" loggingLevel="INFO" loggerRef="loggerRef" />
+					<setHeader headerName="Token">
+						<jsonpath>$.access_token</jsonpath>
+					</setHeader>
+				</when>
+				<otherwise>
+					<camel:throwException ref="dapiOauth2"></camel:throwException>
+				</otherwise>
+			</choice>
+		</route>
+
+		<route id="consumeRecords"  streamCache="true">
+			<description>Consume Records</description>
+			<from uri="direct:Records" />
+			<camel:removeHeaders pattern="*" excludePattern="Token"/>
+<!-- 			<to uri="velocity:template/requestRecords.vm" /> -->
+			<setBody>
+				<simple>${property.bodyRecords}</simple>
+			</setBody>
+			<convertBodyTo type="java.lang.String" />
+			<setHeader headerName="CamelHttpMethod">
+				<constant>POST</constant>
+			</setHeader>
+			<setHeader headerName="orderId">
+				<simple>${property.orderId}</simple>
+			</setHeader>
+			<setHeader headerName="lastName">
+				<simple>${property.lastName}</simple>
+			</setHeader>
+			<setHeader headerName="Auth">
+				<simple>${header.Token}</simple>
+			</setHeader>
+			<setHeader headerName="CamelHttpUri">
+				<simple>{{urlDapiPaymentRecords}}</simple>
+			</setHeader>
+			<setHeader headerName="Content-Type">
+				<simple>application/json</simple>
+			</setHeader>
+			<setHeader headerName="Accept">
+				<simple>application/json</simple>
+			</setHeader>
+			<log message="URL to PaymentRecords ${header.CamelHttpUri}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<to uri="https://dummyHttp?throwExceptionOnFailure=false" />
+			<log message="ResponseCode PaymentRecords  ${headers.CamelHttpResponseCode}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<log message="Response body records ${body}" loggingLevel="DEBUG" loggerRef="loggerRef" />
+			<choice>
+				<when>
+					<simple>${headers.CamelHttpResponseCode} == '200'</simple>
+					<setHeader headerName="code">
+						<simple>200</simple>
+					</setHeader>		
+				</when>
+				<when>
+					<simple>${headers.CamelHttpResponseCode} == '203'</simple>
+					<setHeader headerName="code">
+						<simple>201</simple>
+					</setHeader>		
+				</when>
+				<otherwise>
+					<camel:throwException ref="dapipaymentrecords"></camel:throwException>
+				</otherwise>
+
+			</choice>
+		</route>
+		<route id="consumeRemarks"  streamCache="true">
+			<description>Consume Remarks</description>
+			<from uri="direct:Remarks" />
+			<to uri="velocity:template/requestRemarks.vm" />
+			<camel:removeHeaders pattern="*" excludePattern="Token"/>
+			<setHeader headerName="CamelHttpMethod">
+				<constant>POST</constant>
+			</setHeader>
+			<setHeader headerName="Auth">
+				<simple>${header.Token}</simple>
+			</setHeader>
+			<setHeader headerName="CamelHttpUri">
+				<simple>{{urlDapiPaymentRemarks}}</simple>
+			</setHeader>
+			<setHeader headerName="orderId">
+				<simple>${property.orderId}</simple>
+			</setHeader>
+			<setHeader headerName="lastName">
+				<simple>${property.lastName}</simple>
+			</setHeader>
+			<setHeader headerName="Content-Type">
+				<simple>application/json</simple>
+			</setHeader>
+			<setHeader headerName="Accept">
+				<simple>application/json</simple>
+			</setHeader>
+			<log message="URL to PaymentRemarks ${header.CamelHttpUri}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<log message="Request to PaymentRemarks ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<removeHeader headerName="CamelHttpPath" />
+			<to uri="https://dummyHttp?throwExceptionOnFailure=false" />
+			<log message="ResponseCode PaymentRemarks  ${headers.CamelHttpResponseCode}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<log message="Response body Remarks ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<choice>
+				<when>
+					<simple>${headers.CamelHttpResponseCode} == '200'</simple>
+					<setHeader headerName="code">
+						<simple>200</simple>
+					</setHeader>		
+				</when>
+				<otherwise>
+				<log message="Response error body Remarks ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+					<camel:throwException ref="dapipaymentremarks"></camel:throwException>
+				</otherwise>
+
+			</choice>
+		</route>
+		<route id="consumeContacts" streamCache="true">
+			<description>Consume Contacts to get ContacId</description>
+			<from uri="direct:Contacts" />
+<!-- 			<camel:removeHeaders pattern="*" excludePattern="Token|contactId"/> -->
+			<setHeader headerName="CamelHttpMethod">
+				<constant>POST</constant>
+			</setHeader>
+			<setHeader headerName="Auth">
+				<simple>${header.Token}</simple>
+			</setHeader>
+			<setHeader headerName="CamelHttpUri">
+				<simple>{{urlDapicontacts}}</simple>
+			</setHeader>
+			<setHeader headerName="orderId">
+				<simple>${property.orderId}</simple>
+			</setHeader>
+			<setHeader headerName="lastName">
+				<simple>${property.lastName}</simple>
+			</setHeader>
+			<setHeader headerName="Content-Type">
+				<simple>application/json</simple>
+			</setHeader>
+			<setHeader headerName="Accept">
+				<simple>application/json</simple>
+			</setHeader>
+			<setBody>
+				<simple></simple>
+			</setBody>
+			<log message="URL to GET Contact ${header.CamelHttpUri}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<convertBodyTo type="java.lang.String" />
+			<to uri="https://dummyHttp?throwExceptionOnFailure=false" />
+			<log message="Response GET Contact  ${headers.CamelHttpResponseCode}" loggingLevel="INFO" loggerRef="loggerRef" />
+
+			<choice>
+				<when>
+					<simple>${headers.CamelHttpResponseCode} == '200'</simple>
+					<setHeader headerName="code">
+						<constant>200</constant>
+					</setHeader>
+					<setBody>
+						<jsonpath>$.data</jsonpath>
+					</setBody>
+					<split strategyRef="aggregator" parallelProcessing="true">
+						<simple>${body}</simple>
+						<log message="Data to analyze= ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+						<setHeader headerName="contactType">
+							<simple>${body?['contactType']}</simple>
+						</setHeader>
+						<setHeader headerName="purpose">
+							<simple>${body?['purpose']}</simple>
+						</setHeader>
+						<choice>
+							<when>
+								<simple>${header.contactType} contains 'Email' &amp;&amp; ${header.purpose} contains 'notification'</simple>
+								<setHeader headerName="contactId">
+									<simple>${body?['id']}</simple>
+								</setHeader>
+								<setHeader headerName="lang">
+									<simple>${body?['lang']}</simple>
+								</setHeader>
+								<setBody>
+									<simple>${body}</simple>
+								</setBody>
+								<to uri="bean:Aggregator2?method=handleOrder" />
+							</when>
+							<otherwise>
+								<setBody>
+									<simple></simple>
+								</setBody>
+							</otherwise>
+						</choice>
+
+					</split>
+					<to uri="bean:Aggregator2?method=buildCombinedResponse" />
+					<choice>
+						<when>
+							<simple>${header.contactId} == ''</simple>
+							<camel:throwException ref="dapiContactId"></camel:throwException>
+						</when>
+					</choice>
+				</when>
+
+				<otherwise>
+					<camel:throwException ref="dapiContact"></camel:throwException>
+				</otherwise>
+			</choice>
+		</route>
+
+
+		<route id="consumeNotify" streamCache="true">
+			<description>Consume notification to notify users</description>
+			<from uri="direct:Notification" />
+			<to uri="velocity:template/requestNotification.vm" />
+<!-- 			<camel:removeHeaders pattern="*" excludePattern="Token|contactId"/> -->
+			<log message="Request to notification: ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<setHeader headerName="CamelHttpMethod">
+				<constant>POST</constant>
+			</setHeader>
+			<setHeader headerName="Auth">
+				<simple>${header.Token}</simple>
+			</setHeader>
+			<setHeader headerName="CamelHttpUri">
+				<simple>{{urlDapiusernotifications}}</simple>
+			</setHeader>
+			<setHeader headerName="orderId">
+				<simple>${property.orderId}</simple>
+			</setHeader>
+			<setHeader headerName="lastName">
+				<simple>${property.lastName}</simple>
+			</setHeader>
+			<setHeader headerName="Content-type">
+				<simple>application/json</simple>
+			</setHeader>
+			<setHeader headerName="Accept">
+				<simple>application/json</simple>
+			</setHeader>
+			<log message="URL to Notify ${header.CamelHttpUri}" loggingLevel="INFO" loggerRef="loggerRef" />
+			<convertBodyTo type="java.lang.String" />
+			<to uri="https://dummyHttp?throwExceptionOnFailure=false" />
+			<choice>
+				<when>
+					<simple>${headers.CamelHttpResponseCode} == '200'</simple>
+					<setHeader headerName="code">
+						<constant>200</constant>
+					</setHeader>
+					<log message="ResponseCode Notify ${headers.code}" loggingLevel="INFO" loggerRef="loggerRef" />
+					<log message="Notification success" loggingLevel="INFO" loggerRef="loggerRef" />
+					<setBody>
+						<simple>Notification success</simple>
+					</setBody>
+					<log message="set body success notifications" loggingLevel="INFO" loggerRef="loggerRef" />
+				</when>
+				<otherwise>
+					<setHeader headerName="code">
+						<simple>${headers.CamelHttpResponseCode}</simple>
+					</setHeader>
+					<log message="Notification is not success" loggingLevel="INFO" loggerRef="loggerRef" />
+					<setBody>
+						<simple>Notification is not success</simple>
+					</setBody>
+				</otherwise>
+
+			</choice>
+		</route>
+
+
+		<route id="ROUTE-MAIL-NOTIFICATION" customId="true" streamCache="true">
+			<description>Se redirecciona el mensaje al JMS de envío de Emails</description>
+			<from uri="ref:sedaCorreoSoporteEndpoint" />
+			<doTry>
+				<log message="Notificando el Error: ${property.errorMessage}" loggingLevel="INFO" loggerRef="loggerRef" />
+				<setHeader headerName="DescripcionError">
+					<simple>${headers.errorMessage}</simple>
+				</setHeader>
+				<setHeader headerName="NombreServicio" id="NombreServicio">
+					<simple>{{application.service.name}}</simple>
+				</setHeader>
+				<setHeader headerName="TipoServicio" id="TipoServicio">
+					<simple>{{application.service.type}}</simple>
+				</setHeader>
+				<setProperty propertyName="mailTo">
+					<simple>{{email.to}}</simple>
+				</setProperty>
+				<setProperty propertyName="mailFrom">
+					<simple>{{email.from}}</simple>
+				</setProperty>
+				<setProperty propertyName="mailSubject">
+					<simple>{{email.subject}}</simple>
+				</setProperty>
+				<setProperty propertyName="mailTemplate">
+					<constant>{{email.template}}</constant>
+				</setProperty>
+				<process ref="prepareMailingNotificationProcessor">
+					<description>Create request to send to notification queue</description>
+				</process>
+				<log message="Enviando mensaje a la JMS de Notificaciones: ${body}" loggingLevel="INFO" loggerRef="loggerRef" />
+				<inOnly uri="activemq:queue:{{email.notification.queue.name}}" />
+				<doCatch>
+					<exception>java.lang.Exception</exception>
+					<handled>
+						<constant>true</constant>
+					</handled>
+					<log message="Error enviando mensaje al QUEUE: {{email.notification.queue.name}}, MessageError: ${exception.message}" loggingLevel="ERROR" loggerRef="loggerRef" />
+				</doCatch>
+			</doTry>
+		</route>
+	</camelContext>
+
+	<!-- ActiveMQ Configuration -->
+	<bean class="org.apache.activemq.ActiveMQConnectionFactory" id="jmsConnectionFactory" depends-on="props">
+		<property name="brokerURL" value="${AMQ.brokerURL}" />
+		<property name="userName" value="${AMQ.userName}" />
+		<property name="password" value="${AMQ.password}" />
+	</bean>
+	<bean class="org.apache.activemq.pool.PooledConnectionFactory" destroy-method="stop" id="pooledConnectionFactory" init-method="start">
+		<property name="maxConnections" value="10" />
+		<property name="maximumActiveSessionPerConnection" value="100" />
+		<property name="blockIfSessionPoolIsFull" value="false" />
+		<property name="blockIfSessionPoolIsFullTimeout" value="10000" />
+		<property name="connectionFactory" ref="jmsConnectionFactory" />
+	</bean>
+	<bean class="org.apache.camel.component.jms.JmsConfiguration" id="jmsConfiguration">
+		<property name="connectionFactory" ref="pooledConnectionFactory" />
+	</bean>
+	<bean id="activemq" class="org.apache.activemq.camel.component.ActiveMQComponent">
+		<property name="Configuration" ref="jmsConfiguration" />
+	</bean>
+	<!-- End ActiveMQ Configuration -->
+
+</beans>
